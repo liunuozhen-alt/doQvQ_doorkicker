@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-Jw3p0t1u.js","assets/native-pet-ooYqdX0u.js","assets/vendor-react-B2VXkTUV.js","assets/vendor-dexie-KLdnSHz2.js","assets/vendor-lucide-CIZV0tyx.js","assets/native-pet-D9YoqRtr.css"])))=>i.map(i=>d[i]);
+import{r as e,_ as r}from"./native-pet-ooYqdX0u.js";import"./vendor-react-B2VXkTUV.js";import"./vendor-dexie-KLdnSHz2.js";import"./vendor-lucide-CIZV0tyx.js";const o=e("Media",{web:()=>r(()=>import("./web-Jw3p0t1u.js"),__vite__mapDeps([0,1,2,3,4,5])).then(e=>new e.MediaWeb)});export{o as Media};

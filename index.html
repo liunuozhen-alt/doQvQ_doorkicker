@@ -304,23 +304,29 @@
     }
 
   </style>
-  <script type="module" crossorigin src="./assets/main-BO9xa-SQ.js"></script>
+  <script type="module" crossorigin src="./assets/main-BOFOd43a.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/modulepreload-polyfill-YP0FEG5d.js">
   <link rel="modulepreload" crossorigin href="./assets/vendor-react-B2VXkTUV.js">
   <link rel="modulepreload" crossorigin href="./assets/vendor-dexie-KLdnSHz2.js">
-  <link rel="modulepreload" crossorigin href="./assets/vendor-jszip-DU-5YDGO.js">
-  <link rel="modulepreload" crossorigin href="./assets/vendor-lucide-DBv09HTV.js">
-  <link rel="modulepreload" crossorigin href="./assets/native-pet-Dmhcg6gw.js">
+  <link rel="modulepreload" crossorigin href="./assets/vendor-lucide-CIZV0tyx.js">
+  <link rel="modulepreload" crossorigin href="./assets/native-pet-ooYqdX0u.js">
   <link rel="modulepreload" crossorigin href="./assets/vendor-supabase-Bcpm_8qV.js">
   <link rel="stylesheet" crossorigin href="./assets/native-pet-D9YoqRtr.css">
-  <link rel="stylesheet" crossorigin href="./assets/main-C4gkqfD0.css">
+  <link rel="stylesheet" crossorigin href="./assets/main-9kFao57g.css">
   <link rel="stylesheet" crossorigin href="./assets/NotificationBar-y-kP9VHv.css">
   <link rel="stylesheet" crossorigin href="./assets/vendor-fonts-BglBY6By.css">
-  <link rel="stylesheet" href="./assets/pet-layout-fix.css">
 </head>
 
 <body class="app-loading">
   <div id="app-loading-overlay">
+    <p id="restore-loading-text"
+       style="display:none;position:absolute;bottom:18%;left:0;right:0;text-align:center;color:#888;font-size:15px;padding:0 24px;line-height:1.6">
+      正在載入還原的資料，請稍候…<br>資料較大時需要一點時間，請勿關閉
+    </p>
+    <!-- 🔬 卡住自診斷：15 秒還沒進 app 就把「卡在哪一步/什麼錯誤」直接打在螢幕上，
+         讓沒有 Mac 的用戶不必進 app 也能截圖回報。正常啟動早已進 app、本元素永不顯示。 -->
+    <pre id="stuck-diag-text"
+       style="display:none;position:absolute;bottom:6%;left:0;right:0;margin:0;text-align:left;color:#c00;font-size:11px;padding:0 20px;line-height:1.5;white-space:pre-wrap;word-break:break-all;font-family:monospace"></pre>
     <div class="loader">
       <!-- Left Wing -->
       <svg viewBox="0 0 18.528 35.424" version="1.1" xmlns="http://www.w3.org/2000/svg">
@@ -344,6 +350,16 @@
     </div>
   </div>
   <script>
+    (function () {
+      // 還原重啟後：顯示「正在載入還原資料」文字，讓用戶知道慢是在載入而非卡死。
+      //   flag 由 iCloud/備份還原流程在 reload 前寫入；React 初始化完成後由 App.jsx 清除。
+      try {
+        if (localStorage.getItem('nuojiji_post_restore_loading') === '1') {
+          var _rt = document.getElementById('restore-loading-text');
+          if (_rt) _rt.style.display = 'block';
+        }
+      } catch (e) { /* ignore */ }
+    })();
     (function () {
       // 設計目標：用戶永遠不應該看到白屏，也永遠不應該看到「載入失敗請點此重試」的提示。
       // 策略：
@@ -481,6 +497,7 @@
 
         silentRecoverInFlight = true;
         recordRecoverAttempt();
+        try { if (window.__nuojijiRecordReload) window.__nuojijiRecordReload('watchdog-silent-recover:' + reason); } catch (_e) { }
         console.warn('[boot watchdog] 觸發靜默修復:', reason);
 
         // 清掉 chunk reload 計數器，讓 main.jsx 的自動恢復鏈也能重新介入
@@ -566,14 +583,93 @@
         silentRecover('watchdog-stage2-app-not-rendered');
       }, WATCHDOG_STAGE2_MS);
 
-      // window load 之後若已有內容就立刻拆 overlay（不等 App.jsx 主動呼叫）
+      // window load 之後的輔助拆除：
+      //   ⚠️ 2026-07-08 教訓：舊條件「React 有內容就拆」會繞過 App.jsx 的壁紙預熱閘與
+      //   LockScreen 的壁紙就緒閘 —— AppContent 掛載即有內容，但主頁/鎖屏壁紙還在
+      //   async 解析，提前拆 overlay = 先閃幾秒默認樣式才變美化。
+      //   現在必須同時滿足：① app-ready（App.jsx initApp 完成，含壁紙預熱）
+      //   ② 非 locking-mode（鎖屏由 LockScreen 自己等壁紙就緒後拆，這裡不搶）。
+      //   卡死兜底交給下方 20s content-poll 與 watchdog，永不永久蝴蝶。
       window.addEventListener('load', function () {
         window.setTimeout(function () {
-          if (hasReactRenderedContent()) {
+          if (hasReactRenderedContent() && hasAppReadySignal()
+              && !document.body.classList.contains('locking-mode')) {
             forceRemoveLoadingOverlay('window-load');
           }
         }, 300);
       }, { once: true });
+
+      // 🩹 兜底輪詢（僅【最後手段】，不在正常載入期拆）：
+      //   ⚠️ 教訓：曾經「React 一有內容就立即拆」太激進 —— App 在 initApp 完成前 render 的是
+      //   null（空），此時拆 overlay 會露出【純白屏】（還原後每次白屏、偶爾碰巧進去即此）。
+      //   正解：正常情況 overlay 由 App.jsx initApp 完成後（__nuojijiAppReady）主動拆，butterfly
+      //   一直轉著等它，不會露白。本輪詢只在【initApp 疑似卡死】時兜底：React 有內容但 20 秒
+      //   仍沒 app-ready → 才拆（避免永久蝴蝶）。露出的多半是 initApp 卡在半路的畫面，仍勝過死轉。
+      var _pollStart = Date.now();
+      var _overlayPoll = window.setInterval(function () {
+        if (overlayRemoved) { window.clearInterval(_overlayPoll); return; }
+        // app-ready 已由 App.jsx 主動拆過了，這裡只是保險自停。
+        if (hasAppReadySignal()) { window.clearInterval(_overlayPoll); return; }
+        // 只有「有內容 + 超過 20s 還沒 app-ready」才判定 initApp 卡住，兜底拆除。
+        if (hasReactRenderedContent() && (Date.now() - _pollStart) > 20000) {
+          forceRemoveLoadingOverlay('content-poll-timeout');
+          window.clearInterval(_overlayPoll);
+        }
+      }, 1000);
+      // 安全上限：90 秒後停止輪詢（此時要嘛已拆、要嘛 watchdog 已接手），不留常駐定時器。
+      window.setTimeout(function () { try { window.clearInterval(_overlayPoll); } catch (_e) {} }, 90000);
+
+      // 🔬 卡住自診斷：15 秒仍沒 app-ready，就把啟動診斷打在蝴蝶畫面上（無 Mac 也能看）。
+      //   ⚠️ 例外：sql-runtime-enable / ota-pending 是【合法長階段】（存儲遷移最長可跑
+      //   20+6 秒、OTA 開機下載更久），此時顯示友好提示而非「載入異常」紅字——真機實錄
+      //   用戶在遷移第 18 秒截了滿屏診斷紅字來報「壞了」。階段開始 45 秒後仍沒好才升級真診斷。
+      function showStuckDiag() {
+        try {
+          if (hasAppReadySignal()) return;         // 已進 app，不顯示
+          var el = document.getElementById('stuck-diag-text');
+          if (!el) return;
+          try {
+            var bsRaw = localStorage.getItem('nuojiji_boot_stage');
+            var bsObj = bsRaw ? JSON.parse(bsRaw) : null;
+            var stg = bsObj && bsObj.stage ? String(bsObj.stage) : '';
+            var fresh = bsObj && bsObj.at && (Date.now() - bsObj.at) < 45000;
+            if (fresh && (stg.indexOf('sql-runtime') === 0 || stg.indexOf('ota-pending') === 0)) {
+              // 遷移代碼正在自己上屏實時進度(x/61)→ 別用靜態文案蓋掉
+              if (window.__nuojijiMigProgressActive !== true) {
+                el.textContent = stg.indexOf('ota') === 0
+                  ? '正在準備更新，請稍候…'
+                  : '正在升級資料儲存（資料不會遺失），請稍候，App 將自動進入…';
+                el.style.display = 'block';
+              }
+              window.setTimeout(showStuckDiag, 15000); // 之後再查,超過 45 秒未進展才顯示真診斷
+              return;
+            }
+          } catch (_eS) { }
+          var lines = ['⚠️ 載入異常，診斷資訊（請截圖回報）：'];
+          try {
+            var bs = localStorage.getItem('nuojiji_boot_stage');
+            lines.push('啟動階段: ' + (bs ? String(bs) : '(無)'));
+          } catch (_e1) { lines.push('啟動階段: (讀取失敗)'); }
+          try {
+            var rb = localStorage.getItem('nuojiji_reload_breadcrumb');
+            if (rb) lines.push('上次reload: ' + String(rb));
+          } catch (_e2) { }
+          try {
+            var _hb2 = localStorage.getItem('nuojiji_boot_hb');
+            if (_hb2) lines.push('心跳: ' + String(_hb2) + ' (now=' + Date.now() + ')');
+          } catch (_e4) { }
+          try {
+            var st = localStorage.getItem('__nuojiji_sqlite_selftest');
+            if (st) lines.push('SQLite: ' + String(st));
+          } catch (_e3) { }
+          lines.push('React內容: ' + (hasReactRenderedContent() ? '有' : '無') +
+                     ' / 主腳本: ' + (hasMainScriptStarted() ? '有' : '無') +
+                     ' / auth中: ' + (isAuthInFlight() ? '是' : '否'));
+          el.textContent = lines.join('\n');
+          el.style.display = 'block';
+        } catch (_e) { }
+      }
+      window.setTimeout(showStuckDiag, 15000);
     })();
 
     // 在 React 加载前立即检查锁屏设置，防止 dock 闪现
@@ -604,8 +700,7 @@
 
   </script>
   <div id="root"></div>
-<!-- Cloudflare Pages Analytics -->
- <!-- <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7e52f6546a044d88b678c5ec5f9eed1f"}'></script> -->
- <!-- Cloudflare Pages Analytics --></body>
+
+</body>
 
 </html>
