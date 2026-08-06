@@ -1,0 +1,1 @@
+import{j as t}from"./vendor-react-B2VXkTUV.js";const s=["https://community.nuojiji.app","https://nuojijiland.pages.dev","http://localhost:5180","http://localhost:5181"];function o({status:s,message:o}){return s?t.jsx("div",{className:"preview-status "+("error"===s?"error":""),children:o}):null}export{s as A,o as S};

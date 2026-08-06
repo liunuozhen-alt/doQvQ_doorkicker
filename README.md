@@ -4,7 +4,7 @@ This is a static website mirror of Nuojiji, supporting local development, PWA in
 
 ## 🌟 Project Features
 
-- ✅ Complete static website (from https://nuojiji.pages.dev/)
+- ✅ Complete static website (latest build, from https://nuojiji.app/)
 
 - ✅ PWA support (can be installed on desktop/home screen)
 
@@ -95,9 +95,9 @@ Supports any static hosting service:
 
 - ✅ Font files downloaded to the `assets/` directory
 
-- Montserrat (400/600 character weight)
+- Montserrat (full @fontsource set, including all formats)
 
-- Cinzel (700 character weight)
+- Cinzel (full @fontsource set, including all formats)
 
 - ✅ Complete audio files
 
@@ -111,6 +111,8 @@ Supports any static hosting service:
 
 - woodfish.mp3 (woodfish tone)
 
+- audio/*.mp3 (ambient background sounds: ocean/cafe/night/market/birds)
+
 - ✅ PWA icon files
 
 - ✅ Cover image (nuojiji_comeback_cover.webp)
@@ -122,6 +124,14 @@ Supports any static hosting service:
 - ✅ CSS font paths now use relative paths
 
 - ✅ Support for deployment in subdirectories (e.g., `/subfolder/`)
+
+### 4. Login / Lock Screen / Domain Guard Removed
+
+- ✅ Login form, lock screen and password lock are disabled (see `BYPASS_LOGIN_CHANGES.md`)
+
+- ✅ DomainGuard mirror protection removed (no redirect to the official site)
+
+- ✅ Cloudflare Pages analytics/challenge scripts removed
 
 ---
 
@@ -291,21 +301,25 @@ nuojiji_local/
 
 ├── assets/ # Static resources
 
-│ ├── main-BO9xa-SQ.js # Main JS file (path fixed)
+│ ├── main-BOFOd43a.js # Main JS file (path fixed, login/guard removed)
 
 │ ├── *.css # Style files
 
-│ ├── *.woff2 # Font files (localized)
+│ ├── *.woff2 / *.woff # Font files (localized)
 
 │ └── ...
 
 ├── www/ # Capacitor web directory (synchronization target)
 
+├── audio/ # Ambient background sound files
+
 ├── capacitor.config.json # Capacitor configuration
 
 ├── index.html # Entry page
 
-├── manifest.webmanifest # PWA manifest
+├── manifest.webmanifest # PWA manifest (fullscreen)
+
+├── manifest-cn.webmanifest # PWA manifest for CN ROMs (standalone)
 
 ├── pwa-192x192.png # PWA icon 192x192
 

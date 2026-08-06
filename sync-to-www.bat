@@ -28,6 +28,10 @@ copy /Y *.mp3 www\ >nul 2>nul
 copy /Y sw*.js www\ >nul 2>nul
 copy /Y workbox*.js www\ >nul 2>nul
 
+REM 复制 audio 目录（环境背景音）
+if exist www\audio rmdir /s /q www\audio
+xcopy /E /I /Y audio www\audio >nul
+
 REM 同步到 Android
 echo [4/4] 同步到 Capacitor...
 call npx cap sync
