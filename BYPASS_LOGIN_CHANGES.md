@@ -107,3 +107,21 @@ function yE(e){return!0}
 - [x] 子目录部署（如 /sub/）正常进入主界面
 - [x] 控制台无报错
 
+## 附加修改：酒馆人物卡导入解锁（2026-08-10）
+
+**位置**：`assets/CharacterRosterApp-DCVT7lqU.js`
+
+**原代码：**
+```javascript
+[ot,it]=m.useState(()=>"true"===localStorage.getItem("nuojiji_tavern_unlocked"))
+```
+
+**修改后：**
+```javascript
+[ot,it]=m.useState(()=>{try{localStorage.setItem("nuojiji_tavern_unlocked","true")}catch(r){}return!0})
+```
+
+**效果：**
+- 名册界面点「导入酒馆角色卡」直接打开导入面板（支持 .png/.json 文件上传与链接导入）
+- 不再弹出 8 位解锁码输入框，解锁标记自动写入并永久生效
+
